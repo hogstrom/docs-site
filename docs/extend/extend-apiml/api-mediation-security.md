@@ -1,11 +1,10 @@
 # Zowe API Mediation Layer Security
 
-- [Introduction and requirements](#introduction-and-requirements)
-  - [Transport-level Security](#transport-level-security)
+- [How API ML Transport Security Works](#how-api-ml-transport-security-works)
+  - [Transport Layer Security](#transport-layer-security)
   - [Authentication](#authentication)
-  - [Authorization](#authorization)
-  - [Types of services](#types-of-services)
-  - [Transport Security Requirements](#transport-security-requirements)
+  - [Zowe API ML Services](#zowe-api-ml-services)
+  - [Zowe API ML TLS Requirements](#zowe-api-ml-tls-requirements)
   - [Authentication](#authentication-1)
   - [Truststores and keystores](#truststores-and-keystores)
   - [Client Certificates](#client-certificates)
@@ -29,83 +28,68 @@
     - [Use an existing server certificate for API Mediation Layer](#use-an-existing-server-certificate-for-api-mediation-layer)
 
 
-## Introduction and requirements
+## How API ML Transport Security Works
 
-The security of the APIML is performed on several levels and are described in following sections.
+The security within the API Mediaiton Layer (API ML) is performed on several levels. This article describes how API ML uses Transport Layer Security (TLS). As a system administrator or API developer, use this guide to familiarize yourself with the following security concepts:  
 
-### Transport-level Security
+### Transport Layer Security
 
-Data needs to be secured during transport. This is achieved by using the TLS protocol for all connections to APIML services. While disabling the TLS protocol is permitted (e.g. for debugging purposes), the default mode is to have it on.
+Secure data during data-transport by using the TLS protocol for all connections to API Mediation Layer services. While it is possible to disable the TLS protocol for debugging purposes or other use-cases, the enabled TLS protocol is the default mode.
 
 ### Authentication
 
-Authentication is a way how an entity, whether it be a user (API Client) or an application (API Service), proves its true identity.  
+Authentication is the method of how an entity, whether it be a user (API Client) or an application (API Service), proves its true identity.  
 
-APIML uses two authentication methods:
-- user ID and password (and authentication tokens retrieved by using the user ID and password) 
-    - These requests originate from a user.
+APIML uses the following authentication methods:
+
+- User ID and password 
+    - The user ID and password are used to retreive authentication tokens. 
+    - Requests originate from a user.
     - The user ID and password are validated by a z/OS security manager and
     a token is issued that is then used to access the API service.
 - TLS client certificates
-    - These certificates are for service-only requests.
+    - Certificates are for service-only requests.
 
-In the future, we would like APIML to support client certificates to access the gateway.
+### Zowe API ML Services
 
-### Authorization
+The following range of service types apply to the Zowe API ML:
 
-Authorization is a method used to determine access rights of an entity.
+- Zowe APIML services
 
-In the APIML, the authorization is done by the z/OS security manager ([CA ACF2](https://www.ca.com/us/products/ca-acf2.html), [IBM RACF](https://www.ibm.com/support/knowledgecenter/zosbasics/com.ibm.zos.zsecurity/zsecc_042.htm), [CA Top Secret](https://www.ca.com/us/products/ca-top-secret.html)). The authentication token is used as proof of valid authentication. The authorization checks, however, are always done by the z/OS security manager.
-
-
-### Types of services
-
-- Zowe Core services:
-
-    - Zowe APIML services:
-    
-        - Gateway Service (GW)
-            - The access point for API clients that need to access API services
-            - API Services can be accessed via the gateway by API Clients
-            - Gets information about an API Service from the Discovery Service
+    - Gateway Service (GW)
+    The Gateway is the access point for API clients that require access to API services. 
+    API services can be accessed through the Gateway by API Clients. The Gateway receives information about an API Service 
+    from the Discovery Service.
         
-        - Discovery Service (DS)
-            - Collects information about API Services and provides it to the Gateway Service and other services
-            - API Mediation services are also registered to the Discovery Service
+    - Discovery Service (DS)
+    The Discovery Service collects information about API services and provides this information to the Gateway 
+    and other services. API ML internal services are also registered to the Discovery Service.
         
-        - API Catalog (AC)
-            - Displays information about API services in a web UI
-            - Gets information about an API Service from the Discovery Service
+    - API Catalog (AC)
+    The Catalog displays information about API services through a web UI. The Catalog receives information
+    about an API service from the Discovery Service.
 
-        - Authentication and Authorization Service (AAS) 
-            - Provides authentication and authorization functionality to check access of users to resources on z/OS
-            - Security service is not provided as an individual microservice but is included to the Gateway Service
-            - For more details, see: [APIML wiki](https://github.com/zowe/api-layer/wiki/Zowe-Authentication-and-Authorization-Service)
-
-    - Non-APIML Zowe Core services (zLUX, Atlas)
-
-        - They are like other regular API Client and Service described below
+- Authentication and Authorization Service (AAS) 
+  AAS provides authentication and authorization functionality to check user access to resources on z/OS. 
+  The API ML uses z/OSMF API for  authentication. For more information, see: [APIML wiki](https://github.com/zowe/api-layer/wiki/Zowe-Authentication-and-Authorization-Service)
 
 - API Clients
-    - API Clients are external applications, users, or other API services that are accessing API services via the API Gateway
+  External applications, users, or other API services that are accessing API services via the API Gateway
   
 - API Services 
-    - API Services are applications that want to be accessed via the API Gateway
-    - They register themselves to the Discovery Service
-    - API Services can always access other services via the API Gateway
-    - API Services can sometimes access other services without the API Gateway (if they are installed in such a way that direct access is possible)
-    - API Services can also be API Clients (when they access other services)
+  Applications that are accessed through the API Gateway. API services register themselves to the 
+  Discovery Service and can access other services through the Gateway. If an API service is installed 
+  in such a way that direct access is possible, API services can access other services without the Gateway. 
+  When APIs access other services, they can also function as API clients.
 
-### Transport Security Requirements
+### Zowe API ML TLS Requirements
 
-Servers ae required to provide HTTPS ports.
-
-The requirements for the services are the following:
+The API ML TLS requires servers to provide HTTPS ports. Each of the API ML services has the following specific requirements:
 
 - API Client
-    - Is not a server
-    - Needs to trust the API Gateway
-    - Has a truststore that contains certificate(s) needed to trust the API Gateway
+    - The API Client is not a server
+    - Requires trust of the API Gateway
+    - Has a truststore tha contains certificates required to trust the Gateway
 
 - Gateway Service
     - Provides an HTTPS port
@@ -138,6 +122,7 @@ The requirements for the services are the following:
 
 ### Authentication
 
+
 - API Gateway
 
     - API Gateway currently does not handle authentication. Requests are sent to the API services that need to handle authentication
@@ -157,6 +142,13 @@ The requirements for the services are the following:
 
     - It is up to the service
     - It should be using Authentication and Authorization Service for authentication
+
+
+### Authorization
+
+Authorization is a method used to determine access rights of an entity.
+
+In the APIML, the authorization is done by the z/OS security manager ([CA ACF2](https://www.ca.com/us/products/ca-acf2.html), [IBM RACF](https://www.ibm.com/support/knowledgecenter/zosbasics/com.ibm.zos.zsecurity/zsecc_042.htm), [CA Top Secret](https://www.ca.com/us/products/ca-top-secret.html)). The authentication token is used as proof of valid authentication. The authorization checks, however, are always done by the z/OS security manager.
 
 
 ### Truststores and keystores
