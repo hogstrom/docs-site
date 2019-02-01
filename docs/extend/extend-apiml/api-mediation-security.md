@@ -1,11 +1,10 @@
 # Zowe API Mediation Layer Security
 
-- [Introduction and requirements](#introduction-and-requirements)
-  - [Transport-level Security](#transport-level-security)
+- [How API ML Transport Security Works](#how-api-ml-transport-security-works)
+  - [Transport Layer Security](#transport-layer-security)
   - [Authentication](#authentication)
-  - [Authorization](#authorization)
-  - [Types of services](#types-of-services)
-  - [Transport Security Requirements](#transport-security-requirements)
+  - [Zowe API ML Services](#zowe-api-ml-services)
+  - [Zowe API ML TLS Requirements](#zowe-api-ml-tls-requirements)
   - [Authentication](#authentication-1)
   - [Truststores and keystores](#truststores-and-keystores)
   - [Client Certificates](#client-certificates)
@@ -29,193 +28,186 @@
     - [Use an existing server certificate for API Mediation Layer](#use-an-existing-server-certificate-for-api-mediation-layer)
 
 
-## Introduction and requirements
+## How API ML Transport Security Works
 
-The security of the APIML is performed on several levels and are described in following sections.
+Security within the API Mediaiton Layer (API ML) is performed on several levels. This article describes how API ML uses Transport Layer Security (TLS). As a system administrator or API developer, use this guide to familiarize yourself with the following security concepts:  
 
-### Transport-level Security
+### Transport Layer Security
 
-Data needs to be secured during transport. This is achieved by using the TLS protocol for all connections to APIML services. While disabling the TLS protocol is permitted (e.g. for debugging purposes), the default mode is to have it on.
+Secure data during data-transport by using the TLS protocol for all connections to API Mediation Layer services. While it is possible to disable the TLS protocol for debugging purposes or other use-cases, the enabled TLS protocol is the default mode.
 
 ### Authentication
 
-Authentication is a way how an entity, whether it be a user (API Client) or an application (API Service), proves its true identity.  
+Authentication is the method of how an entity, whether it be a user (API Client) or an application (API Service), proves its true identity.  
 
-APIML uses two authentication methods:
-- user ID and password (and authentication tokens retrieved by using the user ID and password) 
-    - These requests originate from a user.
+API ML uses the following authentication methods:
+
+- **User ID and password** 
+    - The user ID and password are used to retreive authentication tokens. 
+    - Requests originate from a user.
     - The user ID and password are validated by a z/OS security manager and
     a token is issued that is then used to access the API service.
-- TLS client certificates
-    - These certificates are for service-only requests.
-
-In the future, we would like APIML to support client certificates to access the gateway.
-
-### Authorization
-
-Authorization is a method used to determine access rights of an entity.
-
-In the APIML, the authorization is done by the z/OS security manager ([CA ACF2](https://www.ca.com/us/products/ca-acf2.html), [IBM RACF](https://www.ibm.com/support/knowledgecenter/zosbasics/com.ibm.zos.zsecurity/zsecc_042.htm), [CA Top Secret](https://www.ca.com/us/products/ca-top-secret.html)). The authentication token is used as proof of valid authentication. The authorization checks, however, are always done by the z/OS security manager.
-
-
-### Types of services
-
-- Zowe Core services:
-
-    - Zowe APIML services:
     
-        - Gateway Service (GW)
-            - The access point for API clients that need to access API services
-            - API Services can be accessed via the gateway by API Clients
-            - Gets information about an API Service from the Discovery Service
+- **TLS client certificates**
+    - Certificates are for service-only requests.
+
+### Zowe API ML Services
+
+The following range of service types apply to the Zowe API ML:
+
+- **Zowe API ML Services**
+
+  - **Gateway Service (GW)**
+    The Gateway is the access point for API clients that require access to API services. 
+    API services can be accessed through the Gateway by API Clients. The Gateway receives information about an API Service 
+    from the Discovery Service.
         
-        - Discovery Service (DS)
-            - Collects information about API Services and provides it to the Gateway Service and other services
-            - API Mediation services are also registered to the Discovery Service
+  - **Discovery Service (DS)**
+    The Discovery Service collects information about API services and provides this information to the Gateway 
+    and other services. API ML internal services are also registered to the Discovery Service.
         
-        - API Catalog (AC)
-            - Displays information about API services in a web UI
-            - Gets information about an API Service from the Discovery Service
+  - **API Catalog (AC)**
+    The Catalog displays information about API services through a web UI. The Catalog receives information
+    about an API service from the Discovery Service.
 
-        - Authentication and Authorization Service (AAS) 
-            - Provides authentication and authorization functionality to check access of users to resources on z/OS
-            - Security service is not provided as an individual microservice but is included to the Gateway Service
-            - For more details, see: [APIML wiki](https://github.com/zowe/api-layer/wiki/Zowe-Authentication-and-Authorization-Service)
+- **Authentication and Authorization Service (AAS)** 
 
-    - Non-APIML Zowe Core services (zLUX, Atlas)
+  AAS provides authentication and authorization functionality to check user access to resources on z/OS. 
+  The API ML uses z/OSMF API for  authentication. For more information, see: [APIML wiki](https://github.com/zowe/api-layer/wiki/Zowe-Authentication-and-Authorization-Service)
 
-        - They are like other regular API Client and Service described below
+- **API Clients**
 
-- API Clients
-    - API Clients are external applications, users, or other API services that are accessing API services via the API Gateway
+  External applications, users, or other API services that are accessing API services via the API Gateway
   
-- API Services 
-    - API Services are applications that want to be accessed via the API Gateway
-    - They register themselves to the Discovery Service
-    - API Services can always access other services via the API Gateway
-    - API Services can sometimes access other services without the API Gateway (if they are installed in such a way that direct access is possible)
-    - API Services can also be API Clients (when they access other services)
+- **API Services** 
 
-### Transport Security Requirements
+  Applications that are accessed through the API Gateway. API services register themselves to the 
+  Discovery Service and can access other services through the Gateway. If an API service is installed 
+  in such a way that direct access is possible, API services can access other services without the Gateway. 
+  When APIs access other services, they can also function as API clients.
 
-Servers ae required to provide HTTPS ports.
+### Zowe API ML TLS Requirements
 
-The requirements for the services are the following:
+The API ML TLS requires servers to provide HTTPS ports. Each of the API ML services has the following specific requirements:
 
-- API Client
-    - Is not a server
-    - Needs to trust the API Gateway
-    - Has a truststore that contains certificate(s) needed to trust the API Gateway
+- **API Client**
+    - The API Client is not a server
+    - Requires trust of the API Gateway
+    - Has a truststore that contains certificates required to trust the Gateway
 
-- Gateway Service
+- **Gateway Service**
     - Provides an HTTPS port
     - Has a keystore with a server certificate
         - The certificate needs to be trusted by API Clients
         - This certificate should be trusted by web browsers because the API Gateway can be used to display web UIs
     - Has a truststore that contains certificates needed to trust API Services
 
-- API Catalog
+- **API Catalog**
     - Provides an HTTPS port
     - Has a keystore with a server certificate
         - The certificate needs to be trusted by the API Gateway
         - This certificate does not need to be trusted by anyone else
 
-- Discovery Service
+- **Discovery Service**
     - Provides an HTTPS port
     - Has a keystore with a server certificate
         - The certificate needs to be trusted by API Clients
-    - Has a truststore that contains certificates needed to trust API Services
+    - Has a truststore that contains certificates needed to trust API services
 
-- API Service
+- **API Service**
     - Provides an HTTPS port
     - Has a keystore with a server and client certificate
-        - The server certificate needs to be trusted by GW
-        - The client certificate needs to be trusted by DS
+        - The server certificate needs to be trusted by the Gateway
+        - The client certificate needs to be trusted by the Discovery Service
         - The client and server certificates can be the same
         - These certificates do not need to be trusted by anyone else
-    - Has a truststore that contains certificate(s) needed to trust the API Gateway and Discovery Service
+    - Has a truststore that contains one or more certificates that are required to trust the Gateway and Discovery Service
   
 
-### Authentication
+### Authentication for API ML Services
 
-- API Gateway
+- **API Gateway**
 
-    - API Gateway currently does not handle authentication. Requests are sent to the API services that need to handle authentication
+    - API Gateway currently does not handle authentication. 
+    - Requests are sent to the API services that need to handle authentication
 
-- API Catalog
+- **API Catalog**
 
-    - API Catalog is accessed by users and it needs to be protected by a login
-    - This is done via Authentication and Authorization Service
+    - API Catalog is accessed by users and requires protection by a login
+    - Protected access is performed by the Authentication and Authorization Service 
 
-- Discovery Service
+- **Discovery Service**
 
     - Discovery Service is accessed by API Services
-    - This access (reading information and registration) needs to be protected by a client certificate
-    - Access can be granted to users (administrators) - optional
+    - This access (reading information and registration) requires protection needs by a client certificate
+    - (Optional) Access can be granted to users (administrators) 
 
-- API Services
+- **API Services**
 
-    - It is up to the service
-    - It should be using Authentication and Authorization Service for authentication
+    - Authentication is service-dependent
+    - Recommended to use the Authentication and Authorization Service for authentication
 
 
-### Truststores and keystores
+### Authorization
 
-A _keystore_ is a repository of security certificates consisting of either authorization certificates or public key certificates with corresponding private keys, used in TLS encryption. A _keystore_ can be stored in Java specific format (JKS) or use the standard format (PKCS12). The Zowe APIML uses PKCS12 to enable the keystores to be used
+Authorization is a method used to determine access rights of an entity.
+
+In the API ML, authorization is performed by the z/OS security manager ([CA ACF2](https://www.ca.com/us/products/ca-acf2.html), [IBM RACF](https://www.ibm.com/support/knowledgecenter/zosbasics/com.ibm.zos.zsecurity/zsecc_042.htm), [CA Top Secret](https://www.ca.com/us/products/ca-top-secret.html)). An authentication token is used as proof of valid authentication. The authorization checks, however, are always performed by the z/OS security manager.
+
+
+### API ML Truststore and Keystore
+
+A _keystore_ is a repository of security certificates consisting of either authorization certificates or public key certificates with corresponding private keys (PK), used in TLS encryption. A _keystore_ can be stored in Java specific format (JKS) or use the standard format (PKCS12). The Zowe API ML uses PKCS12 to enable the keystores to be used
 by other technologies used in Zowe (Node.js).
 
-The APIML local CA:
+**The API ML Local Certificate Authority (CA)**
 
-- Contains local CA certificate and its private key (needs to be store securely)
-- It is used to sign certificates of services
-- Its certificate is trusted by API services and clients
+- The API ML local CA contains a local CA certificate and a private key that needs to be securely stored
+- Used to sign certificates of services
+- The API ML local CA certificate is trusted by API services and clients
 
-The APIML keystore:
+**The API ML Keystore**
 
-- server certificate of GW (with PK) - can be signed by local CA or external CA
-- server certificate of DS (with PK) - can be signed by local CA
-- server certificate of AC (with PK) - can be signed by local CA
-- used by APIML services
+- Server certificate of GW (with PK). This can be signed by the local CA or an external CA
+- Server certificate of DS (with PK). This can be signed by the local CA
+- Server certificate of AC (with PK). This can be signed by the local CA
+- The API ML keystore is used by API ML services
 
-The APIML truststore:
+**The API ML Truststore**
 
-- contains local CA public certificate
-- contains external CA public certificate (optional)
-- can contain self-signed certificates of API Services that are not signed by local or external CA
-- used by APIML services
+- The API ML truststore contains a local CA public certificate
+- Contains an external CA public certificate (optional)
+- Can contain self-signed certificates of API Services that are not signed by the local or external CA
+- Used by API ML services
 
-Zowe Core services:
+**Zowe Core services**
 
-- they can use the same keystore and truststore as APIML for simpler installation and management
-- or they can have individual stores for higher security
+- Services can use the same keystore and truststore as APIML for simpler installation and management
+- Alternatively, services can have individual stores for higher security
 
-API service keystore (for each service)
+**API Service Keystore** (for each service)
 
-- contains server and client certificate signed by local CA
+- Contains a server and client certificate signed by the local CA
   
-API service truststore (for each service)  
+**API Service Truststore** (for each service)  
 
-- contains local CA and external CA certificates (optional)
+- (Optional) Contains a local CA and external CA certificates 
 
+**Client Certificates**
 
-### Client Certificates
-
-A client certificate is a certificate that is used for validation of the HTTPS client.
-
-The client certificate of a Discovery Service client can be the same certificate as the server certificate of the services which the Discovery Service client.
+- A client certificate is a certificate that is used for validation of the HTTPS client. The client certificate of a Discovery Service client can be the same certificate as the server certificate of the services which the Discovery Service client uses.
 
 ### Authentication to the Discovery Service
 
-The Discovery Service has two types of users that need to authenticate:
+The Discovery Service has the following types of users that require authentication:
 
-1. Administrators and developers who need to login to the homepage of the Discovery Service
+- **Administrators and developers who need to log in to the homepage of the Discovery Service**
    
-   - These users need to provide valid user ID and password (currently pre-configured user ID and password, it will be replaced by mainframe security in https://waffle.io/zowe/api-layer/cards/5bd8be8131cd76001dcddd77)
+    These users need to provide a valid user ID and password.
 
-2. Services that need to register to the Discovery Service
+- **Services that need to register to the Discovery Service**
 
-    - These are not users that have user ID and password but other services 
-    - They authenticate using client certificate. The client certificate is the same TLS certificate that the service uses for HTTPS communication
+    These services are not users that have a user ID and password but are other services. They authenticate using client certificate. The client certificate is the same TLS certificate that the service uses for HTTPS communication.
 
 
 ## Certificate Management in Zowe API Mediation Layer
@@ -224,7 +216,7 @@ The Discovery Service has two types of users that need to authenticate:
 
 #### How to start APIML on localhost with full HTTPS
 
-The https://github.com/zowe/api-layer repository already contains pre-generated certificates that can be used to start APIML with HTTPS on your computer. The certificates are not trusted by your browser so can either ignore security warning or generate your own certificates and add them to the truststore of your browser or system.
+The https://github.com/zowe/api-layer repository already contains pre-generated certificates that can be used to start API ML with HTTPS on your computer. The certificates are not trusted by your browser so you can either ignore security warning or generate your own certificates and add them to the truststore of your browser or system.
 
 The certificates are described in more detail in the https://github.com/zowe/api-layer/blob/https-local-certmgmt-%2372/keystore/README.md.
 
@@ -234,7 +226,7 @@ The certificates are described in more detail in the https://github.com/zowe/api
 Zowe API Mediation layer provides a script that can used on Windows, Mac, Linux, and z/OS
 to generate the certificate and keystore for the local CA, API Mediation Layer, and services.
 
-It is stored in [scripts/apiml_cm.sh](https://github.com/zowe/api-layer/blob/master/scripts/apiml_cm.sh).
+This script is stored in [scripts/apiml_cm.sh](https://github.com/zowe/api-layer/blob/master/scripts/apiml_cm.sh).
 It is a UNIX shell script that can be executed by Bash or z/OS Shell. For Windows, you need to install Bash, for example by using [cmder](http://cmder.net/).
 
 
